@@ -1,188 +1,39 @@
-# Real-time PCR primer design
-# define the criteria for primers in the class
-import math
-from Bio import pairwise2
-from colorama import Fore, Style
 
-class primerRequisites:
-    
-    def __init__(self, primer, length):
-        self.primer = primer
-        self.length = length
-   # define GC content
-    def primer_GC(self):
-        GC_number = self.primer.count('G') + self.primer.count('C')
-        GC_content = (GC_number / self.length) * 100
-        if 40 < GC_content < 60:
-            return True
-  # define Tm      
-    def primer_Tm(self):
-        GC_number = self.primer.count('G') + self.primer.count('C')
-        Tm = 64.9 + 41 * (GC_number -16.4) / self.length
-        if  58 < Tm < 65:
-            return True
-  # define to avoid 3'GC clamp
-    def primer_GCclamp(self):
-        last5bases = self.primer[(self.length - 6): self.length]
-        last5GC = last5bases.count('G') + last5bases.count('C')
-        if last5GC < 3:
-            return True
-  # define repeatie nucleotides  
-    def primer_nucleotiderepeat(self):
-        if all (['AAAA' not in self.primer, 'TTTT' not in self.primer, 'CCCC' not in self.primer, 'GGGG' not in self.primer]):
-            return True
-    # define to avoid repeative di-nucleotides
-    def primer_dinucleotidesrepeat(self):
-        if any(['ATATATAT' in self.primer, 'ACACACAC' in self.primer, 'AGAGAGAG' in self.primer,
-                'TATATATA' in self.primer, 'TCTCTCTC' in self.primer, 'TGTGTGTG' in self.primer,
-                'CACACACA' in self.primer, 'CTCTCTCT' in self.primer, 'CGCGCGCG' in self.primer,
-                'GAGAGAGA' in self.primer, 'GTGTGTGT' in self.primer, 'GCGCGCGC' in self.primer]):
-            return False
-        else:
-            return True
-    # define to remove primers has matches inside
-    def homo_hairpin(self):
-        revPrimer = self.primer[::-1]
-        # get the reverse complementary sequence of the primer
-        reverse_nucleotide = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
-        revComple = ''
-        for i in range(self.length):
-            revComple += reverse_nucleotide[revPrimer[i]]
-        # do the pariwise alignment in primer itself
-        alignments = pairwise2.align.globalxx(self.primer, revComple)
-        # restrain the matched number less than 5
-        if alignments[0][2] <= (self.length // 2):
-            return True
+Eleven Golden Rules of Quantitative RT-PCR
+Michael K. Udvardi, Tomasz Czechowski, Wolf-Rüdiger Scheible
+Published July 2008. DOI: https://doi.org/10.1105/tpc.108.061143
 
-# define second class to get the reverse complementary primer, and the second class inherit all attributes from first class
-class primerParing(primerRequisites):
-    
-    def __init__(self, primer, length, primerpair):
-        super().__init__(primer, length) # Alternatively: primerRequisites.__init__(self, primer, length)
-        self.primerpair = primerpair
-    # define to remove paired primers that have more that 2C Tm difference
-    def primerTm_differ(self):
-        GC_number1 = self.primer.count('G') + self.primer.count('C')
-        GC_number2 = self.primerpair.count('G') + self.primerpair.count('C')
-        Tm1 = 64.9 + 41 * (GC_number1 - 16.4) / self.length
-        Tm2 = 64.9 + 41 * (GC_number2 - 16.4) / len(self.primerpair)
-        if math.fabs(Tm1 - Tm2) < 2:
-            return True
-    # define to remove paired primers that have matches
-    def heter_hairpin(self):
-        # get the reverse complementary sequence
-        reverse_nucleotide = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
-        revPrimer1 = self.primer[::-1]
-        revPrimer2 = self.primerpair[::-1]
-        revComple1 = ''
-        revComple2 = ''
-        for i in range(self.length):
-            revComple1 += reverse_nucleotide[revPrimer1[i]]
-        for i in range(len(self.primerpair)):
-            revComple2 += reverse_nucleotide[revPrimer2[i]]
-        # do the pariwise alignment between primer pairs
-        alignment1 = pairwise2.align.globalxx(self.primer, revComple2)
-        alignment2 = pairwise2.align.globalxx(revComple1, self.primerpair)
-        # restrain the matched number less than half lenght of primers
-        if alignment1[0][2] <= (self.length // 2) and alignment2[0][2] <= (len(self.primerpair) //2):
-            return True
+Reverse transcription followed by quantitative polymerase chain reaction analysis, or qRT-PCR, is an extremely sensitive, cost-effective method for quantifying gene transcripts from plant cells. The availability of nonspecific double-stranded DNA (dsDNA) binding fluorophors, such as SYBR Green, and 384-well-plate real-time PCR machines that can measure fluorescence at the end of each PCR cycle make it possible to perform qRT-PCR on hundreds of genes or treatments in parallel. This has facilitated the comparative analysis of all members of large gene families, such as transcription factor genes (Czechowski et al., 2004). Given the relatively low cost of PCR reagents, and the precision, sensitivity, flexibility, and scalability of qRT-PCR, it is little wonder that thousands of research labs around the world have embraced it as the method of choice for measuring transcript levels. However, despite its popularity, we continue to see systematic errors in the application of methods for qRT-PCR analysis, which can compromise the interpretation of results. The letter to the editor by Gutierrez et al. in this issue highlights one of many common sources of error, namely, the inappropriate choice of reference genes for normalizing transcript levels of test genes prior to comparative analysis of different biological samples. The following are 11 golden rules of qRT-PCR that, when observed, should ensure reproducible and accurate measurements of transcript abundance in plant and other cells. These rules are for relative quantification of RNA using two-step RT-PCR (where the product of a single RT reaction is used as template in multiple PCR reactions), SYBR Green to detect gene-specific PCR products, and reference genes for normalizing transcript levels of test genes before comparing samples. Further details can be found elsewhere (Czechowski et al., 2004, 2005). Most of these rules also apply to relative quantification methods that employ sequence-specific fluorescent probes, such as TaqMan probes, and to absolute quantification methods (http://www.gene-quantification.info/).
 
-    
-# Find all potential primers meeting all requisites for real-time PCR primers
-def primerFinding (codingsequence):
-    allprimers = []
-    codinglength = len(codingsequence)
-    for i in range(20,27):
-        for j in range(0, codinglength):
-            if j < (codinglength - i):
-                primer = codingsequence[j: (j+i+1)]
-                primer = ''.join(primer)
-                a = primerRequisites(primer, i)
-                if a.primer_GC() and a.primer_Tm() and a.primer_GCclamp() and a.primer_nucleotiderepeat() and a.primer_dinucleotidesrepeat() and a.homo_hairpin():
-                    allprimers.append(primer)
+(1) Harvest material from at least three biological replicates to facilitate statistical analysis of data, freeze immediately in liquid nitrogen, and store at −80°C to preserve full-length RNA.
 
-   # paring primers
-    # get the index of all primers on coding sequence
-    allprimers_index = [codingsequence.index(i) for i in allprimers]
-    # make a ditionary to link the index with primers
-    allprimers_dict = dict(zip(allprimers_index, allprimers)) 
-    # alternative method to make a dictionary between two lists: allprimers_dict = {k:v for k, v in zip(allprimers_index, allprimers)}
-    
-    # pair primers to let the amplicon size within 90-150
-    allpairedprimers = []
-    x = 0
-    for i in range(len(allprimers_index)):
-        for j in range(i+1, len(allprimers_index)):
-            if 90 < (allprimers_index[j] - allprimers_index[i]) < 150:
-                k = allprimers_dict[allprimers_index[i]]
-                v = allprimers_dict[allprimers_index[j]]
-                w = primerParing(k, len(k), v)
-                # rule out all paired primers has more than 2C Tm difference
-                if w.primerTm_differ() and w.heter_hairpin():
-                    x += 1
-                    oneprimer = Fore.RED + k + Style.RESET_ALL
-                    theotherprimer = Fore.RED + v + Style.RESET_ALL
-                    primerReve = v[::-1]
-                    # get the reverse complementary sequence of the primer
-                    reverse_nucleotide = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
-                    primerR = ''
-                    for y in range(len(primerReve)):
-                        primerR += reverse_nucleotide[primerReve[y]]
-                    p1 = codingsequence.index(k) # label the first primer with red
-                    p2 = codingsequence.index(v) # label the other primer with red
-                    # print the whole sequence with primers in red color
-                    print('primer pair:', x, ', from', p1, 'to', p2)
-                    print(codingsequence[0:p1] + oneprimer + codingsequence[(p1+len(k)):p2] + theotherprimer + codingsequence[(p2+len(v)):codinglength])
-                    # write the positions and forward and reverse primers to a text file
-                    with open('all primers.txt', 'a') as primerlist:
-                        primerlist.write('primer pair ' + str(x) + ':' + '\t' + str(p1) + '-->' + str(p2))
-                        primerlist.write('\n' + 'Forward primer: ' + k + '\t'*2 + 'Reverse primer: ' + primerR + '\n')
-                        primerlist.write('\n')
+(2) Use an RNA isolation procedure that produces high-quality total RNA from all samples to be analyzed. Check RNA quality using an Agilent 2100 Bioanalyzer (RNA integrity number, RIN > 7 and ideally > 9) or by electrophoretic separation on a high-resolution agarose gel (look for sharp ethidium bromide–stained rRNA bands) and spectrophotometry (A260/A280 > 1.8 and A260/A230 > 2.0). Quantify RNA using A260 values.
 
-    primerlist.close()
-# input a sequence
-codingsequence = input("Input your DNA sequence here: ")
-codingsequence = codingsequence.upper()
-primerFinding(codingsequence)
+(3) Digest purified RNA with DNase I to remove contaminating genomic DNA, which can act as template during PCR and lead to spurious results. Subsequently, perform PCR on the treated RNA, using gene-specific primers, to confirm absence of genomic DNA.
 
-# ****To do the blast in NCBI****
-print('*'*100)
-print()
-print('....All forward and reverse primers have been outputed to \'all primer.txt\'....')
-x = input('Would you want to do the blast for your primer: <Y or N, enter to quit>')
-while x == 'Y' or x =='y':
-    from Bio.Blast import NCBIWWW
+(4) Perform RT reactions with a robust reverse transcriptase with no RNaseH activity (like SuperScriptIII from Invitrogen or ArrayScript from Ambion) to maximize cDNA length and yield. Use ultraclean oligo(dT) primer of high integrity. qRT-PCR gene expression measurements are comparable only when the same priming strategy and reaction conditions are used in all experiments and reactions contain the same total amount of RNA (Ståhlberg et al., 2004).
 
-    seq_for_blast = input('Enter your primer for Blast: ')
-    result_handle = NCBIWWW.qblast('blastn', 'nt', seq_for_blast)
+(5) Test cDNA yield and quality. Perform qPCR on an aliquot of cDNA from each sample, using primers to one or more reference genes that are known to be stably expressed in the organ(s)/tissue(s) under the range of experimental conditions tested. Threshold cycle (Ct) values should be within the range mean ±1 for each reference gene across all samples to ensure similar cDNA yield from each RT reaction. Quality of cDNA can be assessed using two pairs of primers for a reference gene that are ∼1 kb apart. Typically, the Ct value for the primer pair at the 5′-end of a cDNA will be higher than the Ct value of the primer pair at the 3′-end, as reverse transcription begins at the 3′ [poly(A)] end of the template mRNA and does not always extend to the 5′-end of the template. Ideally, the Ct value of the 5′-end primer pair should not exceed that of the 3′-end pair by more than one cycle number.
 
-    with open('my_blast.xml', 'w') as out_handle:
-        out_handle.write(result_handle.read())
-    result_handle.close()
+(6) Design gene-specific PCR primers using a standard set of design criteria (e.g., primer Tm = 60 ± 1°C, length 18 to 25 bases, GC content between 40 and 60%), which generate a unique, short PCR product (between 60 and 150 bp) of the expected length and sequence from a complex cDNA sample in preliminary tests, to facilitate multiparallel qPCR using a standard PCR program. The 3′-untranslated region is a good target for primer design because it is generally more unique than coding sequence and closer to the RT start site.
 
-    result_handle = open('my_blast.xml')
+(7) Reduce technical errors in PCR reaction setup by standardizing (robotize if possible) and minimizing the number of pipetting steps. Mix cDNA with qPCR reagents, then aliquot a standard volume of this “master mix” into each reaction well containing a standard volume of specific primers. Set up reactions in a clean environment free of dust, preferably under a positive airflow hood. Routinely check for DNA contamination of primer and reagent stocks by performing PCR reactions on no template (water) controls.
 
-    from Bio.Blast import NCBIXML
-    blast_record = NCBIXML.read(result_handle)
+(8) For relative quantification of transcript levels, design and test gene-specific primers for at least four potential reference genes selected from the literature (e.g., Czechowski et al., 2005) or from your own experience that are likely to be stably expressed throughout all organs and treatments to be compared. Validate reference genes in preliminary experiments on the range of tissues and treatments you wish to compare using a foreign cRNA added to each RNA sample prior to RT-PCR to normalize data for reference gene transcripts prior to assessment of their expression stability (Czechowski et al., 2005).
 
-    E_VALUE_THRESH = 0.01
-    t = 0
-    for alignment in blast_record.alignments:
-        for hsp in alignment.hsps:
-            if hsp.expect < E_VALUE_THRESH:
-                t += 1
-                print('****Hits', t, '****')
-                print('sequnce: ', alignment.title)
-                print('length', alignment.length)
-                print('e_evalue: ', hsp.expect)
-                print(hsp.query[0:100] + '...')
-                print(hsp.match[0:100] + '...')
-                print(hsp.sbjct[0:100] + '...')
-    print('*'*100)
-    print('Blast is done!')
-    print()
-    x = input('Would you want to do another blast for your primer: <Y or N, enter to quit>')
-else:
-    print()
-    print()
-    print('Thank you for using the program. Have a good day!')
+(9) Perform real-time PCR on test and reference genes in parallel for each sample to capture fluorescence data on dsDNA after each cycle of amplification. Also, perform dsDNA melting curve analysis at the end of the PCR run. When relying on nonspecific DNA binding fluorophors, such as SYBR Green, to quantify relative dsDNA amount, ensure that only a single PCR amplicon of the expected length and melting temperature is produced using gel electrophoresis and PCR amplicon melting curve data, respectively. We typically use a commercial mixture of hot-start Taq polymerase, SYBR Green, and other reagents, such as Power SYBR Green Master Mix from Applied Biosystems, and have observed significant differences in the efficacy (PCR efficiency, specificity, and/or yield) of such products from different suppliers.
+
+(10) Determine which reference gene(s) is best for normalization of test gene transcript levels amongst all samples (e.g., using geNorm [Vandesompele et al., 2002] or BestKeeper software [Pfaffl et al., 2004]), which use as input not only the Ct value, but also the PCR efficiency for each reaction. PCR efficiency can be derived conveniently from amplification plots using the program LinRegPCR (Ramakers et al., 2003). Estimation via the classical calibration dilution curve and slope calculation is also possible, albeit more complicated (http://www.gene-quantification.info/).
+
+(11) Finally, calculate relative transcript abundance for each gene in each sample using a formula that incorporates PCR efficiency for the test gene and Ct values for both test and reference genes (http://www.gene-quantification.info/).
+
+Footnotes
+www.plantcell.org/cgi/doi/10.1105/tpc.108.061143
+
+References
+↵ Czechowski, T., Bari, R.P., Stitt, M., Scheible, W.R., and Udvardi, M.K. (2004). Real-time RT-PCR profiling of over 1400 Arabidopsis transcription factors: Unprecedented sensitivity reveals novel root- and shoot-specific genes. Plant J. 38: 366–379.CrossRefPubMedGoogle Scholar
+↵ Czechowski, T., Stitt, M., Altmann, T., Udvardi, M.K., and Scheible, W.R. (2005). Genome-wide identification and testing of superior reference genes for transcript normalization in Arabidopsis. Plant Physiol. 139: 5–17.Abstract/FREE Full TextGoogle Scholar
+↵ Pfaffl, M.W., Tichopad, A., Prgomet, C., and Neuvians, T.P. (2004). Determination of stable housekeeping genes, differentially regulated target genes and sample integrity: BestKeeper-Excel-based tool using pair-wise correlations. Biotechnol. Lett. 26: 509–551.CrossRefPubMedGoogle Scholar
+↵ Ramakers, C., Ruijter, J.M., Deprez, R.H., and Moorman, A.F. (2003). Assumption-free analysis of quantitative real-time polymerase chain reaction (PCR) data. Neurosci. Lett. 339: 62–66.CrossRefPubMedGoogle Scholar
+↵ Ståhlberg, A., Håkansson, J., Xian, X., Semb, H., and Kubista, M. (2004). Properties of the reverse transcription reaction in mRNA quantification. Clin. Chem. 50: 509–515.Abstract/FREE Full TextGoogle Scholar
+↵ Vandesompele, J., De Preter, K., Pattyn, F., Poppe, B., Van Roy, N., De Paepe, A., and Speleman, F. (2002). Accurate normalization of real-time quantitative RT-PCR data by geometric averaging of multiple internal control genes. Genome Biol. 3: RESEARCH0034.CrossRefPubMedGoogle Scholar
